@@ -1,3 +1,9 @@
+vyatta-service-switch (0.8) unstable; urgency=medium
+
+  * DANOS Import master
+
+ -- Vyatta Package Maintainers <DL-vyatta-help@att.com>  Fri, 01 Nov 2019 12:57:01 +0000
+
 vyatta-service-switch (0.5.1) unstable; urgency=medium
 
   * DANOS Import

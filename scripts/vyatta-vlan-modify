@@ -72,7 +72,7 @@ def vlan_modify_update_rule(rule, rulenum, ifname, policy, operation):
         else:
             err("Invalid action {}",format(action))
             return 1
-    tc_filter = ['tc','filter',operation, 'dev', ifname, 'parent', handle+':', 'pref', str(rule_no), 'protocol', '802.1ad', 'chain', handle, 'u32', 'match', 'u16', vlan_id, '0x0FFF', 'at', '-4', 'action', 'vlan', action_str] + action_param
+    tc_filter = ['tc','filter',operation, 'dev', ifname, 'parent', handle+':', 'pref', str(rule_no), 'protocol', '802.1ad', 'chain', handle, 'u32', 'match', 'u16', str(vlan_id), '0x0FFF', 'at', '-4', 'action', 'vlan', action_str] + action_param
     rc = subprocess.call(tc_filter)
     if rc != 0:
         print("Error:{} {} ".format(rc, tc_filter))
@@ -271,7 +271,7 @@ def policy_vlan_modify(policy):
     dbg("Policy {} unchanged".format(policy))
     return 0
 
-def interface_vlan_modify(intf):
+def interface_vlan_modify(intf, intfpolicy):
     global client
 
     try:
@@ -324,6 +324,16 @@ def interface_vlan_modify(intf):
            dbg("Deleting vlan-modify policy {} from interface {}".format(name[0], intf))
            vlan_modify_update_interface_policy(intf, name[0], "delete")
            return 0
+        if status == client.CHANGED:
+           name = client.node_get(client.CANDIDATE, ifpolicy)
+           if (intfpolicy == name[0]):
+               old_name = client.node_get(client.RUNNING, ifpolicy)
+               dbg("Replacing vlan-modify policy {} with {} on interface {}".format(old_name[0], name[0], intf))
+               vlan_modify_update_interface_policy(intf, old_name[0], "delete")
+               vlan_modify_update_interface_policy(intf, name[0], "add")
+           else:
+               dbg("Ignoring vlan-modify policy {} change on interface {} when called for delete".format(intfpolicy, intf))
+           return 0
         else:
            name = client.node_get(client.CANDIDATE, ifpolicy)
            err("Interface {} Policy {} change - incorrect script invocation".format(intf, name[0]))
@@ -339,16 +349,17 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='vlan-modify: %(message)s')
     parser = argparse.ArgumentParser(description='Vyatta vlan modify command')
     parser.add_argument('-i','--interface', help='interface')
-    parser.add_argument('-p','--policy', help='vlan-modify policy')
+    parser.add_argument('-p','--policy', help='vlan-modify policy', required=True)
     parser.add_argument('-d','--debug', action='store_true', help='Enable debug output')
     args = parser.parse_args()
 
     if args.debug:
         log = logging.getLogger()
         log.setLevel(logging.DEBUG)
-    if args.interface:
-        ret = interface_vlan_modify(args.interface)
-    elif args.policy:
+    if args.policy:
+        if args.interface:
+            ret = interface_vlan_modify(args.interface, args.policy)
+            sys.exit(ret)
         ret = policy_vlan_modify(args.policy)
     else:
         parser.print_help()
