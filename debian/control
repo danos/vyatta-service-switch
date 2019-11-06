@@ -1,0 +1,22 @@
+Source: vyatta-service-switch
+Section: contrib/net
+Priority: optional
+Maintainer: Vyatta Package Maintainers <DL-vyatta-help@att.com>
+Build-Depends: debhelper (>= 9),
+               dh-python,
+               dh-yang,
+               python3,
+Standards-Version: 3.9.8
+
+
+Package: vyatta-policy-vlan-modify-v1-yang
+Architecture: all
+Depends: python3,
+	 python3-vyatta-cfgclient,
+	 python3-vplaned,
+	 vyatta-dataplane-op-vlan-mod-0,
+	 ${misc:Depends},
+	 ${yang:Depends}
+Description: Vyatta switch vlan-modify yang
+ Provides scripts and files necessary for switch vlan-modify feature
+

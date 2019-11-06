@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+
+# Copyright (c) 2019 AT&T Intellectual Property. All Rights Reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+
+import argparse
+import sys
+import json
+import vplaned
+
+# Only supports one dataplane currently
+with vplaned.Controller() as controller:
+    for dp in controller.get_dataplanes():
+        with dp:
+            data = dp.json_command("vlan_mod intf")
+            print(json.dumps(data))
+
+sys.exit(0)
+

@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+
+# Copyright (c) 2019 AT&T Intellectual Property. All Rights Reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+import argparse
+import sys
+import json
+from vyatta.interfaces.interfaces import getInterfaceConfig as gid
+from vyatta import configd
+client = None
+RULE_ANY_INGRESS = 10000
+RULE_ANY_EGRESS = 10001
+CONFIGD_RUNNING = configd.Client.RUNNING
+def show_vlan_modify_interface_state(intf):
+    name = intf['name']
+    print("Interface - {}".format(name))
+    outfmt = "{:<8} {:>12} {:>24} {:>12}"
+    print(outfmt.format("Rule", "vlan", "Action (vlan pcp tpid)", "Direction"))
+    print(outfmt.format("--------","------------", "------------------------", "------------"))
+    for rl in intf['rule']:
+        rule_num = rl['priority-val']
+        vlan_id = rl['selector']['vlan-id']
+        direction = rl['direction']
+        action_type = rl['action']['type']
+        action_str = action_type
+        if rule_num == RULE_ANY_EGRESS or rule_num == RULE_ANY_INGRESS:
+            ifc = gid()
+            iftype = ifc[name].type
+            intf_policy = client.node_get(CONFIGD_RUNNING, "interfaces {} {} switch-group port-parameters policy vlan-modify".format(iftype, name))
+            if intf_policy:
+                rules_cfg = client.tree_get_dict("policy vlan-modify {} rule".format(intf_policy[0]), CONFIGD_RUNNING, 'internal')['rule']
+                for rulenum, rulec in rules_cfg.items():
+                    if rulec['direction'] == direction and rulec['selector']['vlan-id'] == 'any':
+                            rule_num = rulenum
+                            break
+        try:
+            vlan = str(rl['action']['vlan-id'])
+            action_str = action_str + " " + vlan
+        except KeyError:
+            pass
+
+        try:
+            action_prio = str(rl['action']['pcp'])
+            action_str = action_str + " " + action_prio
+        except KeyError:
+            pass
+
+        try:
+            tpid = rl['action']['tag-protocol-id']
+            action_str = action_str + " " + tpid
+        except KeyError:
+            pass
+
+        print(outfmt.format(rule_num, vlan_id, action_str, direction))
+
+
+def vlan_modify_policy_interface_state(ifname):
+
+    tree = client.tree_get_full_dict("interfaces vlan-modify-state")
+
+    try:
+        for intf in tree['vlan-modify-state']['intfs']:
+            if intf['name'] == ifname:
+                show_vlan_modify_interface_state(intf)
+    except KeyError:
+        pass
+
+    return 0
+
+def vlan_modify_policy_state():
+    global client
+
+    tree = client.tree_get_full_dict("interfaces vlan-modify-state")
+    try:
+        for intf in tree['vlan-modify-state']['intfs']:
+            show_vlan_modify_interface_state(intf)
+    except KeyError:
+        pass
+
+    return 0
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Vyatta vlan modify command')
+    parser.add_argument('-i','--interface', help='interface')
+    parser.add_argument('-a','--all', action='store_true', help='all interfaces')
+    args = parser.parse_args()
+
+    try:
+        client = configd.Client()
+    except Exception as exc:
+        err("Cannot establish client session: '{}'".format(str(exc).strip()))
+        sys.exit(1)
+
+    if args.interface:
+       ret = vlan_modify_policy_interface_state(args.interface)
+    elif args.all:
+       ret = vlan_modify_policy_state()
+
+    sys.exit(ret)

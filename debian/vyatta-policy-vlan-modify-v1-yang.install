@@ -1,0 +1,5 @@
+yang/vyatta-policy-vlan-modify-v1.yang usr/share/configd/yang
+yang/vyatta-op-policy-vlan-modify-v1.yang usr/share/configd/yang
+scripts/vyatta-vlan-modify opt/vyatta/sbin
+scripts/vyatta-vlan-modify-show opt/vyatta/sbin
+scripts/vyatta-vlan-modify-get-state opt/vyatta/sbin
